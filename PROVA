@@ -1,0 +1,139 @@
+XML
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/editTextValor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Valor"
+        android:inputType="numberDecimal"
+        android:layout_marginTop="16dp"/>
+
+    <EditText
+        android:id="@+id/editTextDescricao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Descrição"
+        android:layout_below="@id/editTextValor"
+        android:layout_marginTop="16dp"/>
+
+    <Button
+        android:id="@+id/buttonAdicionar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Adicionar Lançamento"
+        android:layout_below="@id/editTextDescricao"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/textViewResultado"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Saldo Total: R$ 0.00"
+        android:layout_below="@id/buttonAdicionar"
+        android:layout_marginTop="16dp"/>
+
+</RelativeLayout>
+
+
+
+MAIN 
+
+
+package sistemafinanceiro
+
+import android.os.Bundle
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Spinner
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import br.unipar.exemploadapter.R
+
+data class Lancamento(val tipo: String, val valor: Double, val descricao: String)
+
+class SistemaFinanceiro {
+    private val lancamentos = mutableListOf<Lancamento>()
+
+    fun adicionarLancamento(tipo: String, valor: Double, descricao: String) {
+        val lancamento = Lancamento(tipo, valor, descricao)
+        lancamentos.add(lancamento)
+    }
+
+    fun calcularSaldoTotal(): Double {
+        return lancamentos.fold(0.0) { saldo, lancamento ->
+            when (lancamento.tipo) {
+                "credito" -> saldo + lancamento.valor
+                "debito" -> saldo - lancamento.valor
+                else -> saldo
+            }
+        }
+    }
+}
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var sistema: SistemaFinanceiro
+    private lateinit var spinnerTipo: Spinner
+    private lateinit var editTextValor: EditText
+    private lateinit var editTextDescricao: EditText
+    private lateinit var buttonAdicionar: Button
+    private lateinit var textViewResultado: TextView
+    private var tipoSelecionado: String = "credito"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        sistema = SistemaFinanceiro()
+
+        editTextValor = findViewById(R.id.editTextValor)
+        editTextDescricao = findViewById(R.id.editTextDescricao)
+        buttonAdicionar = findViewById(R.id.buttonAdicionar)
+        textViewResultado = findViewById(R.id.textViewResultado)
+        spinnerTipo = findViewById(R.id.spinnerTipo)
+
+        val adapter = ArrayAdapter.createFromResource(
+            this,
+            R.array.tipo_lancamento_array,
+            android.R.layout.simple_spinner_item
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerTipo.adapter = adapter
+
+        spinnerTipo.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                tipoSelecionado = if (position == 0) "credito" else "debito"
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+
+        buttonAdicionar.setOnClickListener {
+            val valor = editTextValor.text.toString().toDoubleOrNull()
+            val descricao = editTextDescricao.text.toString()
+
+            if (valor != null && descricao.isNotEmpty()) {
+                sistema.adicionarLancamento(tipoSelecionado, valor, descricao)
+                atualizarSaldo()
+                editTextValor.text.clear()
+                editTextDescricao.text.clear()
+            }
+        }
+    }
+
+    private fun atualizarSaldo() {
+        val saldo = sistema.calcularSaldoTotal()
+        textViewResultado.text = "Saldo Total: R$ %.2f".format(saldo)
+    }
+}
+
+
+
